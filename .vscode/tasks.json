@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [{
+            "label": "build-api",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/JWT.API/JWT.API.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-web",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/JWT.Web/JWT.Web.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
