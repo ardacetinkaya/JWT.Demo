@@ -8,39 +8,58 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace JWT.Web.Pages
 {
     public class IndexModel : PageModel
     {
+
+        public class ResponseData
+        {
+            public string token { get; set; }
+
+        }
         private HttpClient client = new HttpClient();
-        private string baseUrl = string.Empty;
-        public IndexModel(IConfiguration configuration)
-        {
-            baseUrl = configuration["WebAPIUrl"];
+        private readonly ILogger<IndexModel> _logger;
+        private string _baseUrl = string.Empty;
 
+        public string SomeResultFromBusinessAction { get; set; }
+        public IndexModel(IConfiguration configuration, ILogger<IndexModel> logger)
+        {
+            _baseUrl = configuration["WebAPIUrl"];
+            _logger = logger;
         }
-        public void OnGet()
+        public IActionResult OnGet()
         {
-            t();
+            return Page();
         }
-
-        private void t()
+        public async void OnPost(string username, string password)
         {
-            client.BaseAddress = new Uri(baseUrl);
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+            {
+                client.BaseAddress = new Uri(_baseUrl);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            Task<HttpResponseMessage> response = client.PostAsJsonAsync("api/login", new { Username = "ArdaCetinkaya", Password = "SomeFancySecurePassword" });
-            Task<string> tokenResult = response.Result.Content.ReadAsAsync<string>();
+                HttpResponseMessage response = await client.PostAsJsonAsync("api/login", new { Username = username, Password = password });
+                string tokenResult = await response.Content.ReadAsStringAsync();
+                ResponseData tokenData = JsonConvert.DeserializeObject<ResponseData>(tokenResult);
+                _logger.LogInformation($"TOKEN FROM API: {tokenData.token}");
+                //For example you may keep it in a cookie
+                //Now we have token let's do another web api call
+                client.DefaultRequestHeaders.Add("Authorization", "Bearer " + tokenData.token);
 
-            dynamic token = JsonConvert.DeserializeObject(tokenResult.Result);
-            //Call protected "Get" action using the token from above
-            client.DefaultRequestHeaders.Add("Authorization", "Bearer " + token.Token);
-            response = client.GetAsync("api/somebusiness");
+                //This time let's execute a GET method 
+                response = await client.GetAsync("api/somebusiness/2018");
 
-            //Write result from protected action
-            Task<string> values = response.Result.Content.ReadAsStringAsync();
+                SomeResultFromBusinessAction = await response.Content.ReadAsStringAsync();
+
+                 _logger.LogInformation($"Business Action Result: {SomeResultFromBusinessAction}");
+            }
+
+       
 
         }
     }
